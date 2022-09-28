@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta charset="utf-8" />
+    <title>HTML-JS Game 1 "Catch"</title>
+
+    <!--CSS Code Section-->
+    <style>
+        body {
+            background-color: black;
+            font-style: italic;
+            margin: 0px;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            line-height: 5px;
+            color: white;
+        }
+
+        .button {
+            background-color: white;
+            border: none;
+            color: black;
+            padding: 25px 50px;
+            text-align: center;
+            font-style: normal;
+            display: inline-block;
+            font-size: 25px;
+
+            display: inline-block;
+        }
+
+        .header {
+            padding: 10px;
+            color: white;
+            width: 99%;
+            justify-content: center;
+            text-align: center;
+            font-size: 40px;
+            font-style: normal;
+
+            border-style: ridge;
+            border-color: rgb(25, 25, 25);
+        }
+
+        .container {
+            display: flex;
+            font-style: normal;
+        }
+
+        canvas {
+            width: 75%;
+            height: 75%;
+
+            border-style: ridge;
+            border-color: white;
+            box-shadow: white 0px 0px 100px;
+            border-width: 10px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <br></br><br></br>
+    <div class="header" id="gameTitle">
+        <h1>
+            Catch the Ball
+        </h1>
+        <p style="font-size:24px">A or Left Arrow to move Left | D or Right Arrow to move Right</p>
+        <p style="font-size:24px">Press the Spacebar to enable Mouse control</p>
+    </div>
+    <div class="container">
+        <h1 id="max">
+            Max Score: 0&nbsp&nbsp
+        </h1>
+        <h1 id="scorekeep">
+            Score: 0&nbsp&nbsp
+        </h1>
+        <div class="button" id="start" onclick="startGame()">
+            Play
+        </div>
+        <h1 id="life">
+            &nbsp&nbspLives: 3
+        </h1>
+        <h1>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+        </h1>
+    </div>
+
+    <br></br><br></br><br></br><br></br>
+
+    <canvas>
+
+    </canvas>
+
+</body>
+<!--
+    <script src="index.js"></script>
+-->
+<script>
+    var audio = new Audio('https://www.myinstants.com/media/sounds/super-mario-coin-sound.mp3');
+    audio.volume = 0.25;
+</script>
+<script>
+    const canvas = document.querySelector('canvas');
+
+    const c = canvas.getContext('2d');
+
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    var gravity = 5;
+    var speedMod = 0;
+    var points = 0;
+    var maxPoints = 0;
+    var lives = 3;
+
+    var started = false;
+    var gameplay = false;
+    var reset = false;
+    var mouseOn = false;
+
+    // Player Class
+    class Player {
+
+        constructor() {
+            this.position = {
+                x: canvas.width / 2 - 50,
+                y: canvas.height - 150
+            }
+
+            this.velocity = {
+                x: 0
+            }
+
+            this.width = 100;
+            this.height = 50;
+        }
+
+        draw() {
+            c.fillStyle = 'red';
+            c.fillRect(
+                this.position.x,
+                this.position.y,
+                this.width,
+                this.height
+            )
+        }
+
+
+        update() {
+            if (gameplay) {
+                this.draw();
+                if (this.position.x + this.velocity.x > canvas.width * 0.875) {
+                    this.velocity.x = 0;
+                } else if (this.position.x + this.velocity.x < canvas.width * 0.05)
+                    this.velocity.x = 0;
+                else
+                    this.position.x += this.velocity.x;
+            }
+        }
+
+    }
+
+    // Score Class
+    class Score {
+
+        constructor() {
+
+            this.position = {
+                x: canvas.width / 2,
+                y: 10
+            }
+
+            this.width = 25;
+            this.height = 25;
+
+            this.velocity = {
+                y: gravity
+            }
+        }
+
+        draw() {
+            c.fillStyle = 'yellow';
+            c.fillRect(
+                this.position.x,
+                this.position.y,
+                this.width,
+                this.height
+            )
+        }
+
+        update() {
+            if (gameplay) {
+                this.draw();
+                this.position.y += gravity;
+
+                // Spawns a new block if it hits the bottom of the screen
+                if (this.position.y >= canvas.height) {
+                    this.position.y = 10;
+                    this.position.x = Math.random() * ((canvas.width * 0.875) - (canvas.width * 0.05)) + (canvas.width * 0.05);
+                    score(false);
+                }
+
+                // Spawns a new block if it collides with a Player
+                if (this.position.y >= player1.position.y - 25 && this.position.y < player1.position.y + 50) {
+                    if (this.position.x >= player1.position.x - 25 && this.position.x < player1.position.x + 100) {
+                        this.position.y = 10;
+                        this.position.x = Math.random() * ((canvas.width * 0.875) - (canvas.width * 0.05)) + (canvas.width * 0.05);
+                        score(true);
+                    }
+                }
+
+            }
+        }
+    }
+
+    // Keyboard Pressdown Listener - Moves Player
+    addEventListener('keydown', ({ keyCode }) => {
+        if (!mouseOn) {
+            switch (keyCode) {
+                case 65: // Move Left - 'A' key
+                    keys.left.pressed = true;
+                    break;
+                case 37: // Move Left - 'Left Arrow' key
+                    keys.left.pressed = true;
+                    break;
+                case 68: // Move Right - 'D' key
+                    keys.right.pressed = true;
+                    break;
+                case 39: // Move Right - 'Right Arrow' key
+                    keys.right.pressed = true;
+                    break;
+            }
+        }
+    })
+
+    // Keyboard Pressdown Listener for SPACEBAR ONLY
+    addEventListener('keydown', ({ keyCode }) => {
+        switch (keyCode) {
+            case 32: // Enable/Disable Mouse Controls
+                mouseOn = !mouseOn;
+        }
+    })
+
+    // Keyboard Release Listener - Stops player movement when movement keys are released
+    addEventListener('keyup', ({ keyCode }) => {
+        switch (keyCode) {
+            case 65: // Stop Move Left - 'A' key
+                keys.left.pressed = false;
+                break;
+            case 37: // Stop Move Left - 'Left Arrow' key
+                keys.left.pressed = false;
+                break;
+            case 68: // Stop Move Right - 'D' key
+                keys.right.pressed = false;
+                break;
+            case 39: // Stop Move Right - 'Right Arrow' key
+                keys.right.pressed = false;
+                break;
+        }
+    })
+
+    // Mouse Movement Detector for Mouse Controls
+    addEventListener('mousemove', function (e) {
+        if (mouseOn)
+            player1.position.x = e.clientX - 50;
+    });
+
+    // Displays whether or not mouse is enabled
+    function mouseEnabled() {
+        if (mouseOn) {
+            c.fillStyle = "white";
+            c.font = "30px Verdana";
+            c.fillText("Mouse enabled... Hit spacebar to disable...", canvas.width / 3, canvas.height * 0.02);
+        } else {
+            c.fillStyle = "white";
+            c.font = "30px Verdana";
+            c.fillText("Mouse disabled... Hit spacebar to enable...", canvas.width / 3, canvas.height * 0.02);
+        }
+    }
+
+    // Animates/Draws the Moving Rectangle
+    function animate() {
+        requestAnimationFrame(animate);
+        if (gameplay == true)
+            c.clearRect(0, 0, canvas.width, canvas.height);
+
+        player1.update();
+        score1.update();
+        mouseEnabled();
+        if (keys.right.pressed)
+            player1.velocity.x = 10 + speedMod;
+        else if (keys.left.pressed)
+            player1.velocity.x = -10 - speedMod;
+        else
+            player1.velocity.x = 0;
+
+    }
+
+    // Keeps track of the score and lives
+    function score(x) {
+        //audio.play();
+        if (x) {
+            gravity += 0.1;
+            points++;
+            if (points > maxPoints)
+                maxPoints = points;
+            speedMod += 0.05;
+        }
+        else {
+            lives--;
+            if (lives <= 0)
+                gameOver();
+        }
+        if (points >= 0) {
+            document.getElementById("scorekeep").innerHTML = "Score: " + points + "&nbsp&nbsp";
+            document.getElementById("max").innerHTML = "Max Score: " + maxPoints + "&nbsp&nbsp";
+            document.getElementById("life").innerHTML = "&nbsp&nbspLives: " + lives;
+        }
+
+    }
+
+    // Starts the game
+    function startGame() {
+        if (started == false) {
+            gameplay = true;
+            started = true;
+            document.getElementById("start").innerHTML = "Restart";
+        } else if (started == true) {
+            gameplay = true;
+            resetGame();
+        }
+
+    }
+
+    // Ends the game when all lives lost
+    function gameOver() {
+        gameplay = false;
+        c.fillStyle = "red";
+        c.font = "60px Verdana";
+        c.fillText("Game Over", canvas.width / 2 - 160, canvas.height / 2);
+    }
+
+    // Resets the game back to beginning
+    function resetGame() {
+        gravity = 5;
+        points = 0;
+        lives = 3;
+        speedMod = 0;
+        player1.position.x = canvas.width / 2 - 50
+        player1.position.y = canvas.height - 150;
+        score1.position.y = 10;
+        score1.position.x = Math.random() * ((canvas.width * 0.875) - (canvas.width * 0.05)) + (canvas.width * 0.05);
+        document.getElementById("scorekeep").innerHTML = "Score: " + points + "&nbsp&nbsp";
+        document.getElementById("life").innerHTML = "&nbsp&nbspLives: " + lives;
+    }
+
+
+    // Main "Driver" Code
+    const player1 = new Player();
+    const score1 = new Score();
+    const keys = {
+        right: {
+            pressed: false
+        },
+        left: {
+            pressed: false
+        }
+    }
+    animate();
+
+</script>
+
+</html>
